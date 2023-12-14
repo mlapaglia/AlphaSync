@@ -1,4 +1,4 @@
-package com.alphasync
+package com.alphasync.cameralink
 
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
@@ -15,6 +15,10 @@ import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
+import com.alphasync.bluetooth.ConnectionEventListener
+import com.alphasync.R
+import com.alphasync.sonycommand.SonyCommandGenerator
+import com.alphasync.bluetooth.ConnectionManager
 import java.util.Locale
 
 @SuppressLint("MissingPermission")

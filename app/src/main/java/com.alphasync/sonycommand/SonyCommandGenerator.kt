@@ -1,14 +1,11 @@
-package com.alphasync
+package com.alphasync.sonycommand
 
 import android.annotation.SuppressLint
-import android.bluetooth.BluetoothGattCharacteristic
 import android.content.Context
 import android.location.Location
 import android.os.HandlerThread
-import android.os.Looper
 import android.util.Log
-import android.widget.Toast
-import com.google.android.gms.location.CurrentLocationRequest
+import com.alphasync.cameralink.MyCameraLinkEventListener
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.Granularity
 import com.google.android.gms.location.LocationAvailability
@@ -17,7 +14,6 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-import com.google.android.gms.tasks.CancellationTokenSource
 import java.lang.Exception
 import java.lang.ref.WeakReference
 import java.nio.ByteBuffer

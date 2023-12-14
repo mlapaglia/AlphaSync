@@ -1,4 +1,4 @@
-package com.alphasync
+package com.alphasync.cameralink
 
 class MyCameraLinkEventListener {
     var onGpsSignalLost: (() -> Unit)? = null

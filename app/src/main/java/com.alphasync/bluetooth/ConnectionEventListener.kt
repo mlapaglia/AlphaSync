@@ -1,4 +1,4 @@
-package com.alphasync
+package com.alphasync.bluetooth
 
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt

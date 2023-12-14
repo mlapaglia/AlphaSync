@@ -1,4 +1,4 @@
-package com.alphasync
+package com.alphasync.devicescanner
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
@@ -10,6 +10,7 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.alphasync.R
 
 
 @SuppressLint("MissingPermission")

@@ -1,4 +1,4 @@
-package com.alphasync
+package com.alphasync.bluetooth
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter

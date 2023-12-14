@@ -18,6 +18,8 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.alphasync.cameralink.MyCameraLinkService
+import com.alphasync.devicescanner.BleScannerActivity
 
 class MainActivity : AppCompatActivity() {
     private val logTag: String = "MainActivity"

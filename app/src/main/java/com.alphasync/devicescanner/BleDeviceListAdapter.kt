@@ -1,4 +1,4 @@
-package com.alphasync
+package com.alphasync.devicescanner
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.alphasync.R
 
 class BleDeviceListAdapter(
     private val context: Context,
