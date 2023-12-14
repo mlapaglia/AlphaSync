@@ -26,12 +26,10 @@ jobs:
           bash ./gradlew assembleRelease
           bash ./gradlew bundleRelease
       - name: Move files
-        if: ${{ steps.regex-match.outputs.match != '' }}
         run: |
           mv app/build/outputs/apk/release/app-release-unsigned.apk app/build/outputs/app-release.apk
           mv app/build/outputs/bundle/release/app-release.aab app/build/outputs/app-release.aab
       - name: Sign App
-        if: ${{ steps.regex-match.outputs.match != '' }}
         id: sign_app
         uses: ilharp/sign-android-release@v1.0.4
         with:
@@ -42,7 +40,6 @@ jobs:
           keyPassword: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
 
       - name: Build Changelog
-        if: ${{ steps.regex-match.outputs.match != '' }}
         id: changelog
         uses: ardalanamini/auto-changelog@v3
         with:
@@ -52,7 +49,6 @@ jobs:
           semver: false
 
       - name: Create Release
-        if: ${{ steps.regex-match.outputs.match != '' }}
         id: create_release
         uses: ncipollo/release-action@v1.13.0
         with:
