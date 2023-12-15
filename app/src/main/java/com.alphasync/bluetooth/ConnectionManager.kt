@@ -7,8 +7,13 @@ import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.util.Log
+import androidx.core.content.ContextCompat
+import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import java.lang.ref.WeakReference
@@ -21,6 +26,7 @@ class ConnectionManager(context: Context) {
         context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
     }
     private var btAdapter: BluetoothAdapter = btManager.adapter
+    private val btAdapterFilter = IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
     private var btGatt: BluetoothGatt? = null
     private var btGattIsConnecting: Boolean = false
     private lateinit var callerContext: Context
@@ -58,6 +64,7 @@ class ConnectionManager(context: Context) {
         btAddress = address
         callerContext = context
 
+        ContextCompat.registerReceiver(context, bluetoothStateReceiver, btAdapterFilter, RECEIVER_EXPORTED)
         val btDevice = btAdapter.getRemoteDevice(address)
         if (btGattIsConnecting) {
             Log.d(logTag, "Device is currently connecting.")
@@ -77,20 +84,25 @@ class ConnectionManager(context: Context) {
             listeners.forEach { it.get()?.onDisconnect?.invoke() }
         }
 
-        btGattIsConnecting = false
-        btGatt?.close()
-        btGatt = null
+        disconnect()
 
         connect(btAddress, callerContext)
     }
 
     @SuppressLint("MissingPermission")
+    private fun disconnect() {
+        btGattIsConnecting = false
+        btGatt?.disconnect()
+        btGatt = null
+    }
+
+    @SuppressLint("MissingPermission")
     fun writeCharacteristic(
-        characteristic: BluetoothGattCharacteristic,
-        payload: ByteArray
-    ) {
+        characteristicId: UUID,
+        payload: ByteArray)
+    {
         if (isConnected) {
-            btGatt?.findCharacteristic(characteristic.uuid)?.let { characteristic ->
+            btGatt?.findCharacteristic(characteristicId)?.let { characteristic ->
                 characteristic.value = payload
                 val initialSuccess = btGatt?.writeCharacteristic(characteristic)
                 if(initialSuccess!!) {
@@ -115,6 +127,21 @@ class ConnectionManager(context: Context) {
         }
 
         return null
+    }
+
+    private val bluetoothStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == BluetoothAdapter.ACTION_STATE_CHANGED) {
+                val state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)
+                if(state == BluetoothAdapter.STATE_OFF) {
+                    disconnect()
+                    listeners.forEach { it.get()?.onBluetoothStatusChange?.invoke(false) }
+                } else if (state == BluetoothAdapter.STATE_ON) {
+                    reconnect()
+                    listeners.forEach { it.get()?.onBluetoothStatusChange?.invoke(true) }
+                }
+            }
+        }
     }
 
     private val callback = object : BluetoothGattCallback() {
@@ -142,6 +169,7 @@ class ConnectionManager(context: Context) {
                 Log.d(logTag,"onConnectionStateChange: status $status encountered for $deviceAddress!")
                 reconnect()
             }
+
         }
 
         @SuppressLint("MissingPermission")

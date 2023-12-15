@@ -31,7 +31,7 @@ class MyCameraLinkService: Service() {
     private var cameraName: String = ""
     private lateinit var notificationManager: NotificationManagerCompat
     private val notificationChannel: String = "MyCameraLinkNotificationChannel"
-    private val notificationConnectDisconnectId: Int = 1
+    private val notificationServiceStatusId: Int = 1
     private val notificationGpsLostFoundId: Int = 2
 
     fun isPairedToCamera(): Boolean {
@@ -92,7 +92,7 @@ class MyCameraLinkService: Service() {
                     .setContentText("Sending GPS to $cameraName")
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                     .build()
-                notificationManager.notify(notificationConnectDisconnectId, notificationBuilder)
+                notificationManager.notify(notificationServiceStatusId, notificationBuilder)
             }
             onGpsSignalLost = {
                 notificationManager.cancel(notificationGpsLostFoundId)
@@ -102,12 +102,12 @@ class MyCameraLinkService: Service() {
                     .setContentText("Sending GPS to $cameraName paused")
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                     .build()
-                notificationManager.notify(notificationConnectDisconnectId, notificationBuilder)
+                notificationManager.notify(notificationServiceStatusId, notificationBuilder)
             }
             onLocationReady = { location ->
                 val characteristic = connectionManager.characteristics.find { it.uuid.toString().contains("0000dd11")}
                 Log.d(logTag, "Writing to ${characteristic!!.uuid}: ${location.toHexString()}")
-                connectionManager.writeCharacteristic(characteristic, location)
+                connectionManager.writeCharacteristic(characteristic.uuid, location)
             }
         }
     }
@@ -115,44 +115,64 @@ class MyCameraLinkService: Service() {
     private val connectionEventListener by lazy {
         ConnectionEventListener().apply {
             onConnectionSetupComplete = { _ ->
-                notificationManager.cancel(notificationConnectDisconnectId)
+                notificationManager.cancel(notificationServiceStatusId)
                 val notificationBuilder = NotificationCompat.Builder(applicationContext, notificationChannel)
                     .setSmallIcon(R.drawable.ic_stat_name)
                     .setContentTitle("$cameraName connected!")
                     .setContentText("Sending GPS coordinates")
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                     .build()
-                notificationManager.notify(notificationConnectDisconnectId, notificationBuilder)
+                notificationManager.notify(notificationServiceStatusId, notificationBuilder)
 
                 sendEnableGpsCommands()
             }
-
             onDisconnect = {
                 sonyCommandGenerator.stopLocationReporting(myCameraLinkEventListener)
-                notificationManager.cancel(notificationConnectDisconnectId)
+                notificationManager.cancel(notificationServiceStatusId)
                 val notificationBuilder = NotificationCompat.Builder(applicationContext, notificationChannel)
                     .setSmallIcon(R.drawable.ic_camera_disconnected)
                     .setContentTitle("$cameraName disconnected!")
                     .setContentText("GPS coordinates paused")
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                     .build()
-                notificationManager.notify(notificationConnectDisconnectId, notificationBuilder)
+                notificationManager.notify(notificationServiceStatusId, notificationBuilder)
 
                 tryReconnect()
             }
-
             onCharacteristicWrite = { _, sentCharacteristic: BluetoothGattCharacteristic ->
                 if (sentCharacteristic.uuid.toString().contains("0000dd30")) {
                     val characteristic = connectionManager.characteristics.find { it.uuid.toString().contains("0000dd31")}
                     if (characteristic != null) {
                         Log.d(logTag, "GPS Enable command: ${characteristic.uuid}")
-                        connectionManager.writeCharacteristic(characteristic, "01".hexToBytes())
+                        connectionManager.writeCharacteristic(characteristic.uuid, "01".hexToBytes())
                     } else {
                         Log.d(logTag, "GPS Enable command: Cannot find characteristic containing 0000dd31")
                     }
                 } else if (sentCharacteristic.uuid.toString().contains("0000dd31")) {
 
                     startSendingCoordinatesToDevice()
+                }
+            }
+            onBluetoothStatusChange = { isEnabled: Boolean ->
+                if(!isEnabled) {
+                    sonyCommandGenerator.stopLocationReporting(myCameraLinkEventListener)
+                    notificationManager.cancel(notificationServiceStatusId)
+                    val notificationBuilder = NotificationCompat.Builder(applicationContext, notificationChannel)
+                        .setSmallIcon(R.drawable.ic_bluetooth_disabled)
+                        .setContentTitle("Bluetooth disabled")
+                        .setContentText("GPS coordinates paused")
+                        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                        .build()
+                    notificationManager.notify(notificationServiceStatusId, notificationBuilder)
+                } else {
+                    notificationManager.cancel(notificationServiceStatusId)
+                    val notificationBuilder = NotificationCompat.Builder(applicationContext, notificationChannel)
+                        .setSmallIcon(R.drawable.ic_camera_disconnected)
+                        .setContentTitle("$cameraName disconnected!")
+                        .setContentText("GPS coordinates paused")
+                        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                        .build()
+                    notificationManager.notify(notificationServiceStatusId, notificationBuilder)
                 }
             }
         }
@@ -166,14 +186,13 @@ class MyCameraLinkService: Service() {
         createNotificationChannel()
 
         val notification = NotificationCompat.Builder(this, notificationChannel)
-            .setContentTitle("Camera GPS link running")
-            .setContentText("Paired to $cameraName")
-            .setSmallIcon(R.drawable.ic_camera_back)
+            .setContentTitle("Connecting to $cameraName")
+            .setSmallIcon(R.drawable.ic_device_connecting)
             .build()
 
         ServiceCompat.startForeground(
             this,
-            100,
+            notificationServiceStatusId,
             notification,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION or ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
@@ -186,7 +205,7 @@ class MyCameraLinkService: Service() {
         val characteristic = connectionManager.characteristics.find { it.uuid.toString().contains("0000dd30")}
         if (characteristic != null) {
             Log.d(logTag, "GPS Enable command: ${characteristic.uuid}")
-            connectionManager.writeCharacteristic(characteristic, "01".hexToBytes())
+            connectionManager.writeCharacteristic(characteristic.uuid, "01".hexToBytes())
         } else {
             Log.d(logTag, "GPS Enable command: Cannot find characteristic containing 0000dd31")
         }
@@ -218,7 +237,7 @@ class MyCameraLinkService: Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? {
-        Log.d("MyService","Service being bound")
+        Log.d(logTag,"Service is being bound")
         return binder
     }
 }

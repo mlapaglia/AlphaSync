@@ -8,5 +8,5 @@ class ConnectionEventListener {
     var onConnectionSetupComplete: ((BluetoothGatt) -> Unit)? = null
     var onDisconnect: (() -> Unit)? = null
     var onCharacteristicWrite: ((BluetoothDevice, BluetoothGattCharacteristic) -> Unit)? = null
-
+    var onBluetoothStatusChange: ((Boolean) -> Unit)? = null
 }
