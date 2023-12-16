@@ -8,10 +8,10 @@ jobs:
     name: ChatGPT explain code
     steps:
       - name: ChatGTP explain code
-        uses: cirolini/chatgpt-github-actions@v1.3
-        with:
-          openai_api_key: ${{ secrets.OPENAI_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          github_pr_id: ${{ github.event.number }}
-          openai_engine: "text-davinci-002" #optional
-          mode: file # file or patch 
+      uses: cirolini/chatgpt-github-actions@v1.3
+      with:
+        openai_api_key: ${{ secrets.OPENAI_KEY }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        github_pr_id: ${{ github.event.number }}
+        openai_engine: "text-davinci-002"
+        mode: file
