@@ -7,10 +7,10 @@ jobs:
     runs-on: ubuntu-latest
     name: ChatGPT explain code
     steps:
-      - uses: cirolini/chatgpt-github-actions@v1.3
+      - uses: cirolini/chatgpt-github-actions@v1.4
         with:
           openai_api_key: ${{ secrets.OPENAI_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           github_pr_id: ${{ github.event.number }}
           openai_engine: "text-davinci-002"
-          mode: file
+          mode: files
