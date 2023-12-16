@@ -65,6 +65,7 @@ class ConnectionManager(context: Context) {
         callerContext = context
 
         ContextCompat.registerReceiver(context, bluetoothStateReceiver, btAdapterFilter, RECEIVER_EXPORTED)
+        isBluetoothStateReceiverBound = true
         val btDevice = btAdapter.getRemoteDevice(address)
         if (btGattIsConnecting) {
             Log.d(logTag, "Device is currently connecting.")
@@ -90,10 +91,17 @@ class ConnectionManager(context: Context) {
     }
 
     @SuppressLint("MissingPermission")
-    private fun disconnect() {
+    fun disconnect() {
+        if(isBluetoothStateReceiverBound) {
+            callerContext.unregisterReceiver(bluetoothStateReceiver)
+        }
+
+        isBluetoothStateReceiverBound = false
         btGattIsConnecting = false
+        btGatt?.close()
         btGatt?.disconnect()
         btGatt = null
+        isConnected = false
     }
 
     @SuppressLint("MissingPermission")
@@ -129,6 +137,7 @@ class ConnectionManager(context: Context) {
         return null
     }
 
+    private var isBluetoothStateReceiverBound = false
     private val bluetoothStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == BluetoothAdapter.ACTION_STATE_CHANGED) {

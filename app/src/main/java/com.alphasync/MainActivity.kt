@@ -1,6 +1,5 @@
 package com.alphasync
 
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
@@ -8,103 +7,117 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
+import android.view.View
+import android.view.animation.DecelerateInterpolator
 import android.widget.Button
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.activity.result.ActivityResult
-import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
+import androidx.appcompat.widget.SwitchCompat
+import androidx.lifecycle.Observer
+import androidx.lifecycle.lifecycleScope
 import com.alphasync.cameralink.MyCameraLinkService
 import com.alphasync.devicescanner.BleScannerActivity
+import com.alphasync.permissions.PermissionsHandler
+import com.alphasync.settings.SettingsRepository
+import com.alphasync.settings.SettingsViewModel
+import com.alphasync.settings.SettingsViewModelFactory
+import kotlinx.coroutines.launch
+
 
 class MainActivity : AppCompatActivity() {
     private val logTag: String = "MainActivity"
-    @SuppressLint("InlinedApi")
-    private val permissions = arrayOf(
-        android.Manifest.permission.ACCESS_FINE_LOCATION,
-        android.Manifest.permission.BLUETOOTH,
-        android.Manifest.permission.BLUETOOTH_ADMIN,
-        android.Manifest.permission.BLUETOOTH_SCAN,
-        android.Manifest.permission.BLUETOOTH_CONNECT,
-        android.Manifest.permission.POST_NOTIFICATIONS,
-    )
 
-    private var multiplePermissionsContract: ActivityResultContracts.RequestMultiplePermissions? = null
-    private var multiplePermissionLauncher: ActivityResultLauncher<Array<String>>? = null
+    private lateinit var permissionHandler: PermissionsHandler
 
-    private lateinit var myCameraLinkService: MyCameraLinkService
+    private val settingsViewModel: SettingsViewModel by viewModels {
+        SettingsViewModelFactory(SettingsRepository((application as AlphaSyncApp).dataStore))
+    }
+
+    private var myCameraLinkService: MyCameraLinkService? = null
+    private var cameraName: String? = null
+    private var cameraAddress: String? = null
+    private var isConnecting: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_activity)
+        bindCameraLinkService()
 
-        multiplePermissionsContract = ActivityResultContracts.RequestMultiplePermissions()
-        multiplePermissionLauncher = registerForActivityResult(
-            multiplePermissionsContract!!) {
-                isGranted: Any ->
-                    Log.d(logTag, "Launcher result: $isGranted")
-                    if (isGranted == false) {
-                        Log.d(
-                            logTag,"At least one of the permissions was not granted, launching again..."
-                        )
-                        multiplePermissionLauncher!!.launch(permissions)
-                    } else {
-                        bindCameraLinkService()
-                    }
+        settingsViewModel.cameraSettings.observe(this, Observer { cameraSettings ->
+            cameraName = cameraSettings.cameraName
+            cameraAddress = cameraSettings.cameraAddress
+            findViewById<TextView>(R.id.cameraNameTextView).text = cameraName
+            findViewById<TextView?>(R.id.cameraAddressTextView).text = cameraAddress
+            Log.d(logTag, "Currently associated with camera: ${cameraSettings.cameraName} with address: ${cameraSettings.cameraAddress}")
+        })
+
+        permissionHandler = PermissionsHandler(this) { allPermissionsGranted ->
+            if (allPermissionsGranted) {
+                Log.d(logTag, "All permissions granted.")
+                startBleScan()
+            } else {
+                Log.d(logTag, "Not all permissions granted.")
+            }
         }
 
         findViewById<Button?>(R.id.startScanButton).setOnClickListener {
-            startBleScan()
+            permissionHandler.checkAndRequestPermissions()
         }
 
-        askPermissions(multiplePermissionLauncher!!)
+        val fab: ImageView = findViewById(R.id.cameraButton)
+        fab.setOnClickListener { view ->
+            rotateButton(view)
+        }
+
+        findViewById<SwitchCompat>(R.id.serviceEnabledSwitch).setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                findViewById<Button>(R.id.startScanButton).isEnabled = false
+                isConnecting = true
+                bindCameraLinkService()
+            } else {
+                stopForegroundService()
+                findViewById<Button>(R.id.startScanButton).isEnabled = true
+            }
+        }
     }
 
-    private val myCameraLinkServiceConnection = object : ServiceConnection {
+    private var isSpinning = false
+    private fun rotateButton(view: View) {
+        if(!isSpinning) {
+            isSpinning = true
+            view.animate()
+                .rotation(360f)
+                .setDuration(1000)
+                .setInterpolator(DecelerateInterpolator())
+                .withEndAction {
+                    view.rotation = 0f
+                    isSpinning = false
+                }
+                .start()
+        }
+    }
+
+    private var isCameraLinkServiceBound: Boolean = false
+    private var myCameraLinkServiceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             val localBinder = binder as MyCameraLinkService.LocalBinder
             myCameraLinkService = localBinder.getService()
-            var message = if (myCameraLinkService.isPairedToCamera()) "paired" else "not paired"
+            val message = if (myCameraLinkService!!.isConnectedToCamera()) "paired" else "not paired"
             Log.d(logTag, "service is currently $message")
+            launchForegroundService()
+            findViewById<SwitchCompat>(R.id.serviceEnabledSwitch).isChecked = myCameraLinkService?.isConnectedToCamera() ?: false
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
             Log.d(logTag, "Connection failed.")
         }
-    }
-
-    private fun askPermissions(multiplePermissionLauncher: ActivityResultLauncher<Array<String>>) {
-        if (!hasPermissions(permissions)) {
-            Log.d(
-                logTag,"Launching multiple contract permission launcher for ALL required permissions"
-            )
-            multiplePermissionLauncher.launch(permissions)
-        } else {
-            Log.d(logTag, "All permissions are already granted")
-            bindCameraLinkService()
-        }
-    }
-
-    private fun hasPermissions(permissions: Array<String>?): Boolean {
-        if (permissions != null) {
-            for (permission in permissions) {
-                if (ContextCompat.checkSelfPermission(
-                        this,
-                        permission
-                    ) != PackageManager.PERMISSION_GRANTED
-                ) {
-                    Log.d(logTag, "Permission is not granted: $permission")
-                    return false
-                }
-                Log.d(logTag, "Permission already granted: $permission")
-            }
-            return true
-        }
-        return false
     }
 
     private var activityResultLauncher = registerForActivityResult(
@@ -132,13 +145,47 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result: ActivityResult ->
         if (result.resultCode == Activity.RESULT_OK) {
-            val intent = Intent(applicationContext, MyCameraLinkService::class.java)
+            val cameraAddress = result.data?.getStringExtra("address") ?: ""
+            val cameraName = result.data?.getStringExtra("name") ?: ""
+
+            if(cameraName != "" && cameraAddress != "") {
+                lifecycleScope.launch {
+                    onSettingsChanged(cameraName, cameraAddress)
+
+                    launchForegroundService()
+                }
+            }
+        }
+    }
+
+    private fun launchForegroundService() {
+        val intent = Intent(applicationContext, MyCameraLinkService::class.java)
+
+        if(isConnecting && myCameraLinkService != null && !myCameraLinkService!!.isConnectedToCamera()) {
             applicationContext.startForegroundService(intent)
 
-            myCameraLinkService.connectToCamera(
-                result.data!!.getStringExtra("address")!!,
-                result.data!!.getStringExtra("name")!!)
+            lifecycleScope.launch {
+                onSettingsChanged(cameraName!!, cameraAddress!!)
+
+                myCameraLinkService?.connectToCamera(
+                    cameraAddress!!,
+                    cameraName!!
+                )
+
+                isConnecting = false
+            }
         }
+    }
+
+    private fun stopForegroundService() {
+        val intent = Intent(applicationContext, MyCameraLinkService::class.java)
+
+        if(isCameraLinkServiceBound) {
+            unbindService(myCameraLinkServiceConnection)
+            isCameraLinkServiceBound = false
+        }
+
+        applicationContext.stopService(intent)
     }
 
     private fun actuallyStartBleScan() {
@@ -146,7 +193,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun bindCameraLinkService() {
-        val intent = Intent(this, MyCameraLinkService::class.java)
-        bindService(intent, myCameraLinkServiceConnection, Context.BIND_AUTO_CREATE)
+        if(!isCameraLinkServiceBound) {
+            val intent = Intent(this, MyCameraLinkService::class.java)
+            bindService(intent, myCameraLinkServiceConnection, Context.BIND_AUTO_CREATE)
+            isCameraLinkServiceBound = true
+        } else {
+            launchForegroundService()
+        }
+    }
+
+    private fun onSettingsChanged(newCameraName: String, newCameraAddress: String) {
+        settingsViewModel.updateCameraName(newCameraName)
+        settingsViewModel.updateCameraAddress(newCameraAddress)
     }
 }

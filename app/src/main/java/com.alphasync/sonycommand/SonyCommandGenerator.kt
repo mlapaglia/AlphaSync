@@ -20,6 +20,7 @@ import java.nio.ByteBuffer
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.util.TimeZone
 
 class SonyCommandGenerator(callerContext: Context) {
@@ -63,7 +64,7 @@ class SonyCommandGenerator(callerContext: Context) {
     }
 
     private fun generateBytes(location: Location) : ByteArray {
-        val timeZoneId = TimeZone.getDefault().toZoneId()
+        val timeZoneId = ZoneId.systemDefault()
 
         val paddingBytes = ByteArray(65)
         val fixedBytes = byteArrayOf(
@@ -73,7 +74,7 @@ class SonyCommandGenerator(callerContext: Context) {
         val locationBytes = getConvertedCoordinates(location)
         val dateBytes = getConvertedDate(timeZoneId)
         val timeZoneOffsetBytes = getConvertedTimeZoneOffset(timeZoneId)
-        val dstOffsetBytes = getConvertedDstOffsetBytes(timeZoneId)
+        val dstOffsetBytes = getConvertedDstOffset(timeZoneId)
 
         val combinedBytes = ByteArray(95)
         var currentBytePosition = 0
@@ -93,8 +94,8 @@ class SonyCommandGenerator(callerContext: Context) {
         return combinedBytes
     }
 
-    private fun getConvertedDstOffsetBytes(timezoneId: ZoneId): ByteArray {
-        val offsetDstMin = timezoneId.rules.getDaylightSavings(Instant.now()).seconds / 60
+    private fun getConvertedDstOffset(timezoneId: ZoneId): ByteArray {
+        val offsetDstMin = timezoneId.rules.getDaylightSavings(Instant.now()).toMinutes().toInt()
         return offsetDstMin.toShort().toByteArray()
     }
 
@@ -115,7 +116,7 @@ class SonyCommandGenerator(callerContext: Context) {
     }
 
     private fun getConvertedDate(timezoneId: ZoneId): ByteArray {
-        val currentDateTime = LocalDateTime.now(timezoneId)
+        val currentDateTime = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of("UTC"))
         val yearBytes = currentDateTime.year.toShort().toByteArray()
 
         return byteArrayOf(
