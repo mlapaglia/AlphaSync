@@ -3,12 +3,11 @@ on:
     types: [opened, synchronize]
 
 jobs:
-  hello_world_job:
+  ChatGPT_Review:
     runs-on: ubuntu-latest
     name: ChatGPT explain code
     steps:
-      - name: ChatGTP explain code
-        uses: cirolini/chatgpt-github-actions@v1.3
+      - uses: cirolini/chatgpt-github-actions@v1.3
         with:
           openai_api_key: ${{ secrets.OPENAI_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
