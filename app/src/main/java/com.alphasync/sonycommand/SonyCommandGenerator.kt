@@ -72,7 +72,7 @@ class SonyCommandGenerator(callerContext: Context) {
         )
 
         val locationBytes = getConvertedCoordinates(location)
-        val dateBytes = getConvertedDate(timeZoneId)
+        val dateBytes = getConvertedDate()
         val timeZoneOffsetBytes = getConvertedTimeZoneOffset(timeZoneId)
         val dstOffsetBytes = getConvertedDstOffset(timeZoneId)
 
@@ -115,7 +115,7 @@ class SonyCommandGenerator(callerContext: Context) {
         return latitudeBytes + longitudeBytes
     }
 
-    private fun getConvertedDate(timezoneId: ZoneId): ByteArray {
+    private fun getConvertedDate(): ByteArray {
         val currentDateTime = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of("UTC"))
         val yearBytes = currentDateTime.year.toShort().toByteArray()
 

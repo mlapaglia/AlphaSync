@@ -7,6 +7,8 @@ import android.app.Service
 import android.bluetooth.BluetoothGattCharacteristic
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.AudioAttributes
+import android.net.Uri
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
@@ -15,11 +17,12 @@ import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
-import com.alphasync.bluetooth.ConnectionEventListener
 import com.alphasync.R
-import com.alphasync.sonycommand.SonyCommandGenerator
+import com.alphasync.bluetooth.ConnectionEventListener
 import com.alphasync.bluetooth.ConnectionManager
+import com.alphasync.sonycommand.SonyCommandGenerator
 import java.util.Locale
+
 
 @SuppressLint("MissingPermission")
 class MyCameraLinkService: Service() {
@@ -227,10 +230,9 @@ class MyCameraLinkService: Service() {
 
     private fun startSendingCoordinatesToDevice() {
         if (!sonyCommandGenerator.isReporting) {
-
             notificationManager.cancel(notificationServiceStatusId)
             val notificationBuilder = NotificationCompat.Builder(applicationContext, notificationChannel)
-                .setSmallIcon(R.drawable.ic_stat_name)
+                .setSmallIcon(com.alphasync.R.drawable.ic_stat_name)
                 .setContentTitle("$cameraName connected!")
                 .setContentText("Sending GPS coordinates")
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -252,9 +254,17 @@ class MyCameraLinkService: Service() {
     private fun createNotificationChannel() {
         val mChannel = NotificationChannel(
             notificationChannel,
-            "MyNotification",
+            "AlphaSync Notifications",
             NotificationManager.IMPORTANCE_DEFAULT)
-        mChannel.description = "Sony Camera GPS Link"
+        mChannel.description = "AlphaSync Notifications"
+
+        val soundUri = Uri.parse("android.resource://" + this.packageName + "/" + R.raw.autofocus)
+
+        val audioAttributes = AudioAttributes.Builder()
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .build()
+        mChannel.setSound(soundUri, audioAttributes);
 
         val notificationManager = NotificationManagerCompat.from(this)
         notificationManager.createNotificationChannel(mChannel)

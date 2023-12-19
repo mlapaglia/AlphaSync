@@ -5,21 +5,26 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <Button
-        android:id="@+id/startScanButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="124dp"
-        android:layout_marginTop="64dp"
-        android:text="scan for cameras"
+    <ImageView
+        android:id="@+id/searchButton"
+        android:layout_width="161dp"
+        android:layout_height="161dp"
+        android:layout_margin="0dp"
+        android:clickable="true"
+        android:contentDescription="die cut sticker of a magnifying glass"
+        android:focusable="true"
+        android:padding="0dp"
+        android:src="@drawable/search_icon"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:text="Scan for Cameras" />
+        app:layout_constraintVertical_bias="0.131" />
 
     <ImageView
         android:id="@+id/cameraButton"
-        android:layout_width="240dp"
-        android:layout_height="269dp"
+        android:layout_width="203dp"
+        android:layout_height="222dp"
         android:layout_margin="0dp"
         android:clickable="true"
         android:contentDescription="die cut sticker of a camera"
@@ -29,7 +34,8 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.585" />
 
     <TextView
         android:id="@+id/cameraNameTextView"
@@ -50,7 +56,7 @@
         android:layout_height="wrap_content"
         android:layout_below="@id/cameraNameTextView"
         android:layout_centerHorizontal="true"
-        android:layout_marginBottom="64dp"
+        android:layout_marginBottom="40dp"
         android:text="Camera Address"
         android:textColor="#000"
         android:textSize="18sp"
@@ -60,13 +66,13 @@
 
     <androidx.appcompat.widget.SwitchCompat
         android:id="@+id/serviceEnabledSwitch"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="117dp"
+        android:layout_height="64dp"
         android:layout_marginStart="162dp"
-        android:layout_marginTop="102dp"
         android:layout_marginEnd="153dp"
         android:layout_marginBottom="21dp"
         android:text="Enabled"
+        android:enabled="false"
         app:layout_constraintBottom_toTopOf="@+id/cameraNameTextView"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />

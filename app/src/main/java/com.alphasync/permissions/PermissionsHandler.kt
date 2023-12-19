@@ -8,10 +8,10 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
-class PermissionsHandler(private val activity: Activity, private val permissionsResultCallback: (Boolean) -> Unit) {
+class PermissionsHandler(private val activity: Activity, val permissionsResultCallback: (Boolean) -> Unit) {
 
     companion object {
-        private const val PERMISSION_REQUEST_CODE = 1
+        const val PERMISSION_REQUEST_CODE = 1
     }
 
     @SuppressLint("InlinedApi")
@@ -45,7 +45,7 @@ class PermissionsHandler(private val activity: Activity, private val permissions
     }
 
     private fun showRationaleDialog(permissions: List<String>, onContinue: () -> Unit) {
-        val message = buildRationaleMessage(permissions, activity)
+        val message = buildRationaleMessage(permissions)
 
         AlertDialog.Builder(activity)
             .setTitle("Permission Required")
@@ -60,7 +60,7 @@ class PermissionsHandler(private val activity: Activity, private val permissions
             .show()
     }
 
-    private fun buildRationaleMessage(permissions: List<String>, context: Context): String {
+    private fun buildRationaleMessage(permissions: List<String>): String {
         val permissionNames = permissions.map {
             when (it) {
                 android.Manifest.permission.ACCESS_FINE_LOCATION -> "* Precise GPS location to tag photos correctly."

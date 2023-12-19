@@ -25,7 +25,7 @@ class ConnectionManager(context: Context) {
     private val btManager: BluetoothManager by lazy {
         context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
     }
-    private var btAdapter: BluetoothAdapter = btManager.adapter
+    private var btAdapter: BluetoothAdapter? = btManager.adapter
     private val btAdapterFilter = IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
     private var btGatt: BluetoothGatt? = null
     private var btGattIsConnecting: Boolean = false
@@ -66,7 +66,17 @@ class ConnectionManager(context: Context) {
 
         ContextCompat.registerReceiver(context, bluetoothStateReceiver, btAdapterFilter, RECEIVER_EXPORTED)
         isBluetoothStateReceiverBound = true
-        val btDevice = btAdapter.getRemoteDevice(address)
+        if(!BluetoothAdapter.checkBluetoothAddress(address)) {
+            Log.d(logTag, "Invalid device address, disconnecting.")
+            disconnect()
+        }
+        if (btAdapter == null) {
+            Log.d(logTag, "Device does not have bluetooth.")
+            disconnect()
+            return
+        }
+
+        val btDevice = btAdapter!!.getRemoteDevice(address)
         if (btGattIsConnecting) {
             Log.d(logTag, "Device is currently connecting.")
         }

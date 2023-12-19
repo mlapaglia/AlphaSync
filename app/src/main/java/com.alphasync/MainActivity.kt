@@ -7,6 +7,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
@@ -18,6 +19,7 @@ import android.widget.TextView
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
 import androidx.lifecycle.Observer
@@ -34,7 +36,7 @@ import kotlinx.coroutines.launch
 class MainActivity : AppCompatActivity() {
     private val logTag: String = "MainActivity"
 
-    private lateinit var permissionHandler: PermissionsHandler
+    private lateinit var permissionsHandler: PermissionsHandler
 
     private val settingsViewModel: SettingsViewModel by viewModels {
         SettingsViewModelFactory(SettingsRepository((application as AlphaSyncApp).dataStore))
@@ -48,6 +50,12 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_activity)
+
+        val btManager = this.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        if(btManager.adapter == null) {
+            showNoBluetoothDialog()
+        }
+
         bindCameraLinkService()
 
         settingsViewModel.cameraSettings.observe(this, Observer { cameraSettings ->
@@ -56,19 +64,17 @@ class MainActivity : AppCompatActivity() {
             findViewById<TextView>(R.id.cameraNameTextView).text = cameraName
             findViewById<TextView?>(R.id.cameraAddressTextView).text = cameraAddress
             Log.d(logTag, "Currently associated with camera: ${cameraSettings.cameraName} with address: ${cameraSettings.cameraAddress}")
+            if(cameraName != "" && cameraAddress != "") {
+                findViewById<SwitchCompat>(R.id.serviceEnabledSwitch).isEnabled = true
+            }
         })
 
-        permissionHandler = PermissionsHandler(this) { allPermissionsGranted ->
-            if (allPermissionsGranted) {
-                Log.d(logTag, "All permissions granted.")
-                startBleScan()
-            } else {
-                Log.d(logTag, "Not all permissions granted.")
-            }
+        permissionsHandler = PermissionsHandler(this) { _ ->
+            startBleScan()
         }
 
-        findViewById<Button?>(R.id.startScanButton).setOnClickListener {
-            permissionHandler.checkAndRequestPermissions()
+        findViewById<ImageView?>(R.id.searchButton).setOnClickListener {
+            permissionsHandler.checkAndRequestPermissions()
         }
 
         val fab: ImageView = findViewById(R.id.cameraButton)
@@ -78,12 +84,38 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<SwitchCompat>(R.id.serviceEnabledSwitch).setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
-                findViewById<Button>(R.id.startScanButton).isEnabled = false
+                findViewById<ImageView>(R.id.searchButton).isEnabled = false
                 isConnecting = true
                 bindCameraLinkService()
             } else {
                 stopForegroundService()
-                findViewById<Button>(R.id.startScanButton).isEnabled = true
+                findViewById<ImageView>(R.id.searchButton).isEnabled = true
+            }
+        }
+    }
+
+    private fun showNoBluetoothDialog() {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("No Bluetooth")
+        builder.setMessage("Your device does not support Bluetooth. Bluetooth is required to communicate with the camera.")
+
+        builder.setPositiveButton("OK") { _, _ ->
+            finish() // Close the current activity
+        }
+
+        val dialog: AlertDialog = builder.create()
+        dialog.show()
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == PermissionsHandler.PERMISSION_REQUEST_CODE) {
+            if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                Log.d(logTag, "All permissions granted.")
+                startBleScan()
+            } else {
+                Log.d(logTag, "Not all permissions granted.")
             }
         }
     }
@@ -145,14 +177,15 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result: ActivityResult ->
         if (result.resultCode == Activity.RESULT_OK) {
-            val cameraAddress = result.data?.getStringExtra("address") ?: ""
-            val cameraName = result.data?.getStringExtra("name") ?: ""
+            lifecycleScope.launch {
+                val cameraAddress = result.data?.getStringExtra("address") ?: ""
+                val cameraName = result.data?.getStringExtra("name") ?: ""
+                onSettingsChanged(cameraName, cameraAddress)
 
-            if(cameraName != "" && cameraAddress != "") {
-                lifecycleScope.launch {
-                    onSettingsChanged(cameraName, cameraAddress)
-
-                    launchForegroundService()
+                if (cameraName != "" && cameraAddress != "") {
+                    findViewById<SwitchCompat>(R.id.serviceEnabledSwitch).isEnabled = true
+                } else {
+                    findViewById<SwitchCompat>(R.id.serviceEnabledSwitch).isEnabled = false
                 }
             }
         }
