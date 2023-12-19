@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">AlphaSync</string>
+    <string name="title_activity_ble_scanner">BleScannerActivity</string>
+</resources>
